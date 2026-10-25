@@ -1,0 +1,18 @@
+# Saída do compilador (prc-tools / pilrc)
+build/
+
+# Palm OS SDK de terceiros (jichu4n/palm-os-sdk). Ver README, seção Compilar.
+sdk/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Cópias datadas/versionadas de dist/ — vão no GitHub Release, não no git
+dist/Mengao-v*.prc
+dist/MengaoDados-*.pdb
+
+# Sistema / editor
+.DS_Store
+*~
+*.swp

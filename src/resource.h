@@ -1,0 +1,11 @@
+#define MainForm      1000
+#define MainMenu      1000
+#define MenuHome      1001
+#define MenuAbout     1002
+#define MenuJogos     1003
+#define MenuTabela    1004
+#define MenuElenco    1005
+#define MenuTitulos   1006
+#define AboutAlert    1100
+#define DetailAlert   1101
+#define NoHiResAlert  1102

@@ -1,0 +1,62 @@
+#include "resource.h"
+
+FORM ID MainForm AT (0 0 160 160)
+NOFRAME
+MENUID MainMenu
+BEGIN
+END
+
+MENU ID MainMenu
+BEGIN
+  PULLDOWN "Opções"
+  BEGIN
+    MENUITEM "Início" ID MenuHome "I"
+    MENUITEM "Jogos" ID MenuJogos "J"
+    MENUITEM "Tabela" ID MenuTabela "T"
+    MENUITEM "Elenco" ID MenuElenco "E"
+    MENUITEM "Títulos" ID MenuTitulos "L"
+    MENUITEM SEPARATOR
+    MENUITEM "Sobre o Mengão" ID MenuAbout "S"
+  END
+END
+
+ALERT ID AboutAlert
+INFORMATION
+BEGIN
+  TITLE "Sobre o Mengão"
+  MESSAGE "Mengão 1.1.0 para Palm OS 5\n\nDados: ESPN, via MengaoDados.pdb\nAtualizado em: ^1\n\nApp de fã, sem vínculo oficial com o C.R. Flamengo."
+  BUTTONS "OK"
+END
+
+ALERT ID DetailAlert
+INFORMATION
+BEGIN
+  TITLE "Jogo"
+  MESSAGE "^1\n\n^2\n^3"
+  BUTTONS "OK"
+END
+
+ALERT ID NoHiResAlert
+ERROR
+BEGIN
+  TITLE "Mengão"
+  MESSAGE "Este app requer Palm OS 5 com tela hi-res (320x320 ou 320x480)."
+  BUTTONS "OK"
+END
+
+VERSION 1 "1.1.0"
+APPLICATIONICONNAME 1000 "Mengão"
+
+ICONFAMILYEX
+BEGIN
+  BITMAP "icon-1.bmp" BPP 1
+  BITMAP "icon-8.bmp" BPP 8 TRANSPARENT 255 0 255
+  BITMAP "icon-8-hd.bmp" BPP 8 TRANSPARENT 255 0 255 DENSITY 144
+END
+
+SMALLICONFAMILYEX
+BEGIN
+  BITMAP "sicon-1.bmp" BPP 1
+  BITMAP "sicon-8.bmp" BPP 8 TRANSPARENT 255 0 255
+  BITMAP "sicon-8-hd.bmp" BPP 8 TRANSPARENT 255 0 255 DENSITY 144
+END

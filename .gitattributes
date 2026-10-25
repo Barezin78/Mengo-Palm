@@ -1,0 +1,5 @@
+*.prc binary
+*.pdb binary
+*.png binary
+*.bmp binary
+tools/hostsim/sim binary
