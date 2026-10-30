@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.1 — 29/10/2026
+### Corrigido
+- `Cat` / `CatN` / `Cat2` agora respeitam o tamanho do buffer (não estouram `StrCat`).
+- `gHasData` fica falso se o PDB vier sem jogos e sem tabela.
+
 ## v1.1.0 — 24/10/2026
 ### Build
 - Sem mudar a versão do app: `make` também gera `dist/Mengao-v1.1.0.prc`. A versão é lida da linha `VERSION` em `src/mengao.rcp` (um lugar só). O nome interno do banco continua `Mengao` (`build-prc -n Mengao`), então instalar o PRC novo substitui o antigo.
@@ -27,8 +32,3 @@
   - `frmUpdateEvent` e `winDisplayChangedEvent` não desenham mais duas vezes (`FrmDrawForm` + desenho). A mudança de tela só redesenha se o tamanho mudou de verdade.
   - Rolar as listas e trocar de aba também usam o buffer, sem piscar.
 - O buffer é recriado quando a tela muda entre 320×480 e 320×320 e é liberado ao fechar o app.
-
-## v1.0 — 24/10/2026
-- Primeira versão: telas Início (fundo listrado, escudo estilizado, relógio, próximo jogo e último resultado), Jogos, Tabela, Elenco e Títulos.
-- Suporte a 320×480 (Tungsten T3, área de Graffiti fechada) e 320×320.
-- Dados da ESPN via `MengaoDados.pdb` (`tools/gerar_dados.py`).

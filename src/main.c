@@ -1,4 +1,4 @@
-/* Mengão 1.1.0 — app de fã do Flamengo para Palm OS 5 (Tungsten T3, 320x480 / 320x320)
+/* Mengão 1.1.1 — app de fã do Flamengo para Palm OS 5 (Tungsten T3, 320x480 / 320x320)
  * Fonte em UTF-8; o Makefile converte para CP1252 (codificação do Palm OS) antes de compilar. */
 #include <PalmOS.h>
 #include <PenInputMgr.h>
@@ -43,9 +43,21 @@ static UInt16 rd16(const UInt8 *p) { return ((UInt16)p[0] << 8) | p[1]; }
 static UInt32 rd32(const UInt8 *p) { return ((UInt32)p[0] << 24) | ((UInt32)p[1] << 16) | ((UInt32)p[2] << 8) | p[3]; }
 static void cpy(Char *dst, const UInt8 *src, UInt16 n) { MemMove(dst, src, n); dst[n - 1] = 0; }
 
-static void Cat(Char *d, const Char *s) { StrCat(d, s); }
-static void CatN(Char *d, Int32 n) { Char b[12]; StrIToA(b, n); StrCat(d, b); }
-static void Cat2(Char *d, Int16 n) { Char b[3]; b[0] = '0' + (n / 10) % 10; b[1] = '0' + n % 10; b[2] = 0; StrCat(d, b); }
+/* Append without overflowing d[0..cap-1] (cap includes the NUL). */
+static void Cat(Char *d, UInt16 cap, const Char *s) {
+    UInt16 n, i, room;
+    if (!d || cap < 2) return;
+    n = StrLen(d);
+    if (n >= cap - 1) { d[cap - 1] = 0; return; }
+    if (!s) return;
+    room = (UInt16)(cap - 1 - n);
+    for (i = 0; s[i] && i < room; i++) d[n + i] = s[i];
+    d[n + i] = 0;
+}
+static void CatN(Char *d, UInt16 cap, Int32 n) { Char b[12]; StrIToA(b, n); Cat(d, cap, b); }
+static void Cat2(Char *d, UInt16 cap, Int16 n) {
+    Char b[3]; b[0] = '0' + (n / 10) % 10; b[1] = '0' + n % 10; b[2] = 0; Cat(d, cap, b);
+}
 
 static const Char *kWd[7] = { "Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb" };
 
@@ -111,6 +123,8 @@ static void LoadData(void) {
             pl->num = r[0]; cpy(pl->pos, r + 1, 3); cpy(pl->name, r + 4, 20);
         }
         if (h) MemHandleUnlock(h);
+        /* PDB incompleto / listas vazias: trata como sem dados. */
+        if (gNG == 0 && gNT == 0) gHasData = false;
     }
     DmCloseDatabase(db);
 }
@@ -237,20 +251,20 @@ static void BigClock(Coord cx, Coord y, Coord w, Coord h, Coord t, Int16 hh, Int
     Digit(x, y, w, h, t, mm % 10, cWHT);
 }
 
-static void FmtDate(Char *b, UInt32 secs, Boolean wd, Boolean hour) {
+static void FmtDate(Char *b, UInt16 cap, UInt32 secs, Boolean wd, Boolean hour) {
     DateTimeType dt; TimSecondsToDateTime(secs, &dt);
     b[0] = 0;
-    if (wd) { Cat(b, kWd[dt.weekDay % 7]); Cat(b, " "); }
-    Cat2(b, dt.day); Cat(b, "/"); Cat2(b, dt.month);
-    if (hour) { Cat(b, " · "); Cat2(b, dt.hour); Cat(b, "h"); Cat2(b, dt.minute); }
+    if (wd) { Cat(b, cap, kWd[dt.weekDay % 7]); Cat(b, cap, " "); }
+    Cat2(b, cap, dt.day); Cat(b, cap, "/"); Cat2(b, cap, dt.month);
+    if (hour) { Cat(b, cap, " · "); Cat2(b, cap, dt.hour); Cat(b, cap, "h"); Cat2(b, cap, dt.minute); }
 }
 
-static void MatchStr(Char *b, const Game *g, Boolean score) {
+static void MatchStr(Char *b, UInt16 cap, const Game *g, Boolean score) {
     b[0] = 0;
-    Cat(b, g->home ? "FLA" : g->opp);
-    if (score && g->status == 1) { Cat(b, " "); CatN(b, g->home ? g->gf : g->ga); Cat(b, " x "); CatN(b, g->home ? g->ga : g->gf); Cat(b, " "); }
-    else Cat(b, " x ");
-    Cat(b, g->home ? g->opp : "FLA");
+    Cat(b, cap, g->home ? "FLA" : g->opp);
+    if (score && g->status == 1) { Cat(b, cap, " "); CatN(b, cap, g->home ? g->gf : g->ga); Cat(b, cap, " x "); CatN(b, cap, g->home ? g->ga : g->gf); Cat(b, cap, " "); }
+    else Cat(b, cap, " x ");
+    Cat(b, cap, g->home ? g->opp : "FLA");
 }
 
 static UInt32 ResultColor(const Game *g) {
@@ -277,10 +291,10 @@ static void DrawMiniTable(Coord y, Coord yMax, UInt16 n) {
         UInt32 bg = me ? cPALE : cWHT, fg = me ? cDRED : cBLK; FontID f = me ? boldFont : stdFont;
         Coord ty = y + (rh - FH(f)) / 2;
         Box(4, y, gW - 8, rh, bg, 0);
-        b[0] = 0; CatN(b, t->pos); Cat(b, "º"); Txt(b, 34, ty, f, fg, bg, aR);
+        b[0] = 0; CatN(b, sizeof(b), t->pos); Cat(b, sizeof(b), "º"); Txt(b, 34, ty, f, fg, bg, aR);
         Txt(t->name, 44, ty, f, fg, bg, aL);
-        b[0] = 0; CatN(b, t->pts); Cat(b, " pts"); Txt(b, 250, ty, boldFont, fg, bg, aR);
-        b[0] = 0; CatN(b, t->j); Cat(b, " J"); Txt(b, gW - 12, ty, stdFont, cGRY, bg, aR);
+        b[0] = 0; CatN(b, sizeof(b), t->pts); Cat(b, sizeof(b), " pts"); Txt(b, 250, ty, boldFont, fg, bg, aR);
+        b[0] = 0; CatN(b, sizeof(b), t->j); Cat(b, sizeof(b), " J"); Txt(b, gW - 12, ty, stdFont, cGRY, bg, aR);
     }
     AddHot(0, y0 - 4, gW, y - y0 + 4, actTabela);
 }
@@ -298,7 +312,7 @@ static void DrawHome(void) {
         Box(0, y0, gW, y1 - y0, (i % 2) ? cBLK : cRED, 0);
     }
     Title("Mengão", cRED, cBLK);
-    b[0] = 0; Cat(b, kWd[dt.weekDay % 7]); Cat(b, " "); Cat2(b, dt.day); Cat(b, "/"); Cat2(b, dt.month);
+    b[0] = 0; Cat(b, sizeof(b), kWd[dt.weekDay % 7]); Cat(b, sizeof(b), " "); Cat2(b, sizeof(b), dt.day); Cat(b, sizeof(b), "/"); Cat2(b, sizeof(b), dt.month);
     Txt(b, gW - 6, (26 - FH(boldFont)) / 2, boldFont, cWHT, cBLK, aR);
 
     /* painel do relógio */
@@ -319,7 +333,7 @@ static void DrawHome(void) {
         static const Char *mes[12] = { "janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho",
                                        "agosto", "setembro", "outubro", "novembro", "dezembro" };
         static const Char *wdl[7] = { "domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado" };
-        b[0] = 0; Cat(b, wdl[dt.weekDay % 7]); Cat(b, ", "); CatN(b, dt.day); Cat(b, " de "); Cat(b, mes[(dt.month + 11) % 12]);
+        b[0] = 0; Cat(b, sizeof(b), wdl[dt.weekDay % 7]); Cat(b, sizeof(b), ", "); CatN(b, sizeof(b), dt.day); Cat(b, sizeof(b), " de "); Cat(b, sizeof(b), mes[(dt.month + 11) % 12]);
         Txt(b, tall ? 204 : 200, tall ? 156 : 104, tall ? boldFont : stdFont, cPINK, cBLK, aC);
     }
 
@@ -338,14 +352,14 @@ static void DrawHome(void) {
         Game *g = &gGames[ng];
         if (g->when > now) {
             UInt32 d = g->when - now, days = d / 86400UL, hrs = (d % 86400UL) / 3600UL, mins = (d % 3600UL) / 60;
-            b[0] = 0; Cat(b, "em ");
-            if (days) { CatN(b, days); Cat(b, "d "); Cat2(b, (Int16)hrs); Cat(b, "h"); }
-            else { CatN(b, hrs); Cat(b, "h "); Cat2(b, (Int16)mins); Cat(b, "min"); }
+            b[0] = 0; Cat(b, sizeof(b), "em ");
+            if (days) { CatN(b, sizeof(b), days); Cat(b, sizeof(b), "d "); Cat2(b, sizeof(b), (Int16)hrs); Cat(b, sizeof(b), "h"); }
+            else { CatN(b, sizeof(b), hrs); Cat(b, sizeof(b), "h "); Cat2(b, sizeof(b), (Int16)mins); Cat(b, sizeof(b), "min"); }
         } else StrCopy(b, "AGORA!");
         Txt(b, gW - 18, cy0 + (24 - FH(boldFont)) / 2, boldFont, cWHT, cRED, aR);
-        MatchStr(b, g, false);
+        MatchStr(b, sizeof(b), g, false);
         Txt(b, gW / 2, cy0 + (tall ? 34 : 28), largeBoldFont, cBLK, cWHT, aC);
-        FmtDate(b, g->when, true, true); Cat(b, " · "); Cat(b, CompName(g->comp));
+        FmtDate(b, sizeof(b), g->when, true, true); Cat(b, sizeof(b), " · "); Cat(b, sizeof(b), CompName(g->comp));
         Txt(b, gW / 2, cy0 + (tall ? 70 : 60), tall ? boldFont : stdFont, tall ? cDRED : cGRY, cWHT, aC);
         if (tall && g->venue[0]) Txt(g->venue, gW / 2, cy0 + 96, stdFont, cGRY, cWHT, aC);
     }
@@ -357,9 +371,9 @@ static void DrawHome(void) {
     if (lg >= 0) {
         /* mede tudo com FntCharsWidth para o texto nunca encostar na data (fontes reais do Palm) */
         Game *g = &gGames[lg]; Coord x, dx, room; Char d[8], pen[16]; UInt16 k;
-        FmtDate(d, g->when, false, false);
+        FmtDate(d, sizeof(d), g->when, false, false);
         dx = gW - 8 - Txt(d, gW - 8, wy + 6, stdFont, cGRY, cWHT, aR);   /* data à direita */
-        MatchStr(b, g, true);
+        MatchStr(b, sizeof(b), g, true);
         {   /* rótulo encurta se nem o placar couber */
             const Char *lab = "Último: ";
             FntSetFont(boldFont);
@@ -369,10 +383,10 @@ static void DrawHome(void) {
         room = dx - 10 - x;                                          /* espaço livre até a data */
         pen[0] = 0;
         if (g->pf != 255) {                                          /* placar dos pênaltis, na ordem do jogo */
-            StrCopy(pen, " pên. "); CatN(pen, g->home ? g->pf : g->pa); Cat(pen, "x"); CatN(pen, g->home ? g->pa : g->pf);
+            StrCopy(pen, " pên. "); CatN(pen, sizeof(pen), g->home ? g->pf : g->pa); Cat(pen, sizeof(pen), "x"); CatN(pen, sizeof(pen), g->home ? g->pa : g->pf);
         }
         for (k = 0; k < 3; k++) {                                     /* "pên. 4x3" -> "(p)" -> sem pênaltis */
-            Char t[48]; StrCopy(t, b); Cat(t, pen);
+            Char t[48]; StrCopy(t, b); Cat(t, sizeof(t), pen);
             FntSetFont(boldFont);
             if (FntCharsWidth(t, StrLen(t)) <= room || !pen[0]) { StrCopy(b, t); break; }
             if (k == 0) StrCopy(pen, " (p)"); else pen[0] = 0;
@@ -416,24 +430,24 @@ static void DrawRow(UInt16 i, Coord y) {
         Game *g = &gGames[i]; Boolean sel = (Int16)i == gSel;
         UInt32 bg = sel ? cBLK : cWHT, fg = sel ? cWHT : cBLK;
         Box(0, y, right + 4, h, bg, 0);
-        FmtDate(b, g->when, true, false);
+        FmtDate(b, sizeof(b), g->when, true, false);
         Txt(b, 6, ty, boldFont, fg, bg, aL);
         Txt(g->comp, 110, ty, stdFont, sel ? cPINK : cGRY, bg, aL);
         {   /* resultado/horário à direita primeiro; o confronto usa o espaço que sobrar (sem encavalar) */
             Coord rw, mx = 152, room; Char m[16]; FontID mf = boldFont;
             if (g->status == 1) {
-                b[0] = 0; CatN(b, g->gf); Cat(b, "x"); CatN(b, g->ga);
-                if (g->pf != 255) Cat(b, "p");
+                b[0] = 0; CatN(b, sizeof(b), g->gf); Cat(b, sizeof(b), "x"); CatN(b, sizeof(b), g->ga);
+                if (g->pf != 255) Cat(b, sizeof(b), "p");
                 rw = Txt(b, right, ty, boldFont, sel ? cWHT : ResultColor(g), bg, aR);
             } else if (g->status == 2) {
                 rw = Txt("adiado", right, ty, stdFont, sel ? cWHT : cGRY, bg, aR);
             } else {
                 DateTimeType dt; TimSecondsToDateTime(g->when, &dt);
-                b[0] = 0; Cat2(b, dt.hour); Cat(b, ":"); Cat2(b, dt.minute);
+                b[0] = 0; Cat2(b, sizeof(b), dt.hour); Cat(b, sizeof(b), ":"); Cat2(b, sizeof(b), dt.minute);
                 rw = Txt(b, right, ty, boldFont, sel ? cPINK : cDRED, bg, aR);
             }
             room = right - rw - 8 - mx;
-            MatchStr(m, g, false);
+            MatchStr(m, sizeof(m), g, false);
             FntSetFont(mf);
             if (FntCharsWidth(m, StrLen(m)) > room) mf = stdFont;      /* não coube em negrito */
             FntSetFont(mf);
@@ -450,17 +464,17 @@ static void DrawRow(UInt16 i, Coord y) {
         UInt32 bg = fla ? cPALE : cWHT, fg = fla ? cDRED : cBLK;
         FontID f = fla ? boldFont : stdFont;
         Box(0, y, right + 4, h, bg, 0);
-        b[0] = 0; CatN(b, t->pos); Txt(b, 28, ty, f, fg, bg, aR);
+        b[0] = 0; CatN(b, sizeof(b), t->pos); Txt(b, 28, ty, f, fg, bg, aR);
         Txt(t->name, 38, ty, f, fg, bg, aL);
-        b[0] = 0; CatN(b, t->pts); Txt(b, 206, ty, boldFont, fg, bg, aR);
-        b[0] = 0; CatN(b, t->j);   Txt(b, 238, ty, f, fg, bg, aR);
-        b[0] = 0; CatN(b, t->w);   Txt(b, 266, ty, f, fg, bg, aR);
-        b[0] = 0; if (t->gd > 0) Cat(b, "+"); CatN(b, t->gd); Txt(b, right, ty, f, fg, bg, aR);
+        b[0] = 0; CatN(b, sizeof(b), t->pts); Txt(b, 206, ty, boldFont, fg, bg, aR);
+        b[0] = 0; CatN(b, sizeof(b), t->j);   Txt(b, 238, ty, f, fg, bg, aR);
+        b[0] = 0; CatN(b, sizeof(b), t->w);   Txt(b, 266, ty, f, fg, bg, aR);
+        b[0] = 0; if (t->gd > 0) Cat(b, sizeof(b), "+"); CatN(b, sizeof(b), t->gd); Txt(b, right, ty, f, fg, bg, aR);
         Line(0, y + h - 1, right + 3, y + h - 1, cLGRY);
     } else if (gScreen == scrElenco) {
         Player *p = &gPlayers[i];
         Box(0, y, right + 4, h, cWHT, 0);
-        if (p->num) { b[0] = 0; CatN(b, p->num); Txt(b, 36, ty, boldFont, cDRED, cWHT, aR); }
+        if (p->num) { b[0] = 0; CatN(b, sizeof(b), p->num); Txt(b, 36, ty, boldFont, cDRED, cWHT, aR); }
         Txt(p->pos, 48, ty, stdFont, cGRY, cWHT, aL);
         Txt(p->name, 84, ty, stdFont, cBLK, cWHT, aL);
         Line(0, y + h - 1, right + 3, y + h - 1, cLGRY);
@@ -536,7 +550,7 @@ static void DrawTabScreen(void) {
     } else if (gScreen == scrJogos || gScreen == scrElenco) {
         if (gScreen == scrJogos) StrCopy(b, "Jogos 2026"); else StrCopy(b, "Elenco");
         Txt(b, 6, hy, boldFont, cBLK, cWHT, aL);
-        if (gUpdated) { StrCopy(b, "atual. "); { Char d[24]; FmtDate(d, gUpdated, false, true); Cat(b, d); }
+        if (gUpdated) { StrCopy(b, "atual. "); { Char d[24]; FmtDate(d, sizeof(d), gUpdated, false, true); Cat(b, sizeof(b), d); }
                         Txt(b, gW - 6, hy, stdFont, cGRY, cWHT, aR); }
         Line(0, hy + 23, gW, hy + 23, cBLK);
         hy += 26;
@@ -621,16 +635,16 @@ static void ShowDetails(Int16 i) {
     Game *g;
     if (i < 0 || i >= (Int16)gNG) return;
     g = &gGames[i];
-    FmtDate(a, g->when, true, true);
-    { DateTimeType dt; TimSecondsToDateTime(g->when, &dt); Cat(a, "  "); CatN(a, dt.year); }
+    FmtDate(a, sizeof(a), g->when, true, true);
+    { DateTimeType dt; TimSecondsToDateTime(g->when, &dt); Cat(a, sizeof(a), "  "); CatN(a, sizeof(a), dt.year); }
     b[0] = 0;
-    Cat(b, g->home ? "Flamengo" : g->oppname); Cat(b, " x "); Cat(b, g->home ? g->oppname : "Flamengo");
+    Cat(b, sizeof(b), g->home ? "Flamengo" : g->oppname); Cat(b, sizeof(b), " x "); Cat(b, sizeof(b), g->home ? g->oppname : "Flamengo");
     StrCopy(c, CompName(g->comp));
-    if (g->venue[0]) { Cat(c, "\n"); Cat(c, g->venue); }
+    if (g->venue[0]) { Cat(c, sizeof(c), "\n"); Cat(c, sizeof(c), g->venue); }
     if (g->status == 1) {
-        Cat(c, "\nPlacar: "); CatN(c, g->home ? g->gf : g->ga); Cat(c, " x "); CatN(c, g->home ? g->ga : g->gf);
-        if (g->pf != 255) { Cat(c, " (pên. "); CatN(c, g->home ? g->pf : g->pa); Cat(c, "x"); CatN(c, g->home ? g->pa : g->pf); Cat(c, ")"); }
-    } else if (g->status == 2) Cat(c, "\nAdiado");
+        Cat(c, sizeof(c), "\nPlacar: "); CatN(c, sizeof(c), g->home ? g->gf : g->ga); Cat(c, sizeof(c), " x "); CatN(c, sizeof(c), g->home ? g->ga : g->gf);
+        if (g->pf != 255) { Cat(c, sizeof(c), " (pên. "); CatN(c, sizeof(c), g->home ? g->pf : g->pa); Cat(c, sizeof(c), "x"); CatN(c, sizeof(c), g->home ? g->pa : g->pf); Cat(c, sizeof(c), ")"); }
+    } else if (g->status == 2) Cat(c, sizeof(c), "\nAdiado");
     FrmCustomAlert(DetailAlert, a, b, c);
 }
 
@@ -736,7 +750,7 @@ static Boolean MainHandleEvent(EventPtr e) {
             }
             if (e->data.menu.itemID == MenuAbout) {
                 Char b[24];
-                if (gUpdated) { FmtDate(b, gUpdated, false, true); } else StrCopy(b, "sem dados");
+                if (gUpdated) { FmtDate(b, sizeof(b), gUpdated, false, true); } else StrCopy(b, "sem dados");
                 FrmCustomAlert(AboutAlert, b, "", "");
                 return true;
             }

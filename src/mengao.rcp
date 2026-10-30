@@ -24,7 +24,7 @@ ALERT ID AboutAlert
 INFORMATION
 BEGIN
   TITLE "Sobre o Mengão"
-  MESSAGE "Mengão 1.1.0 para Palm OS 5\n\nDados: ESPN, via MengaoDados.pdb\nAtualizado em: ^1\n\nApp de fã, sem vínculo oficial com o C.R. Flamengo."
+  MESSAGE "Mengão 1.1.1 para Palm OS 5\n\nDados: ESPN, via MengaoDados.pdb\nAtualizado em: ^1\n\nApp de fã, sem vínculo oficial com o C.R. Flamengo."
   BUTTONS "OK"
 END
 
@@ -44,7 +44,7 @@ BEGIN
   BUTTONS "OK"
 END
 
-VERSION 1 "1.1.0"
+VERSION 1 "1.1.1"
 APPLICATIONICONNAME 1000 "Mengão"
 
 ICONFAMILYEX
